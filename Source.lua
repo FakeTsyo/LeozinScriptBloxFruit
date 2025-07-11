@@ -1,0 +1,348 @@
+--[[ 
+Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot
+Feito para fins educacionais. 
+Inclui: GUI com ícone ninja, autofarm, auto chest, ESP, TP, troca de mar, aimbot em jogadores, etc.
+]]
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Configs
+local ICON_ID = "rbxassetid://13433967006" -- Ícone ninja (use o ID de sua preferência)
+local GUI_NAME = "BloxFruitsMobileGui"
+
+-- Função para criar um botão flutuante (ícone ninja)
+function CreateFloatingIcon()
+    local sgui = Instance.new("ScreenGui", game.CoreGui)
+    sgui.Name = GUI_NAME
+
+    local icon = Instance.new("ImageButton")
+    icon.Name = "NinjaIcon"
+    icon.Parent = sgui
+    icon.Size = UDim2.new(0,60,0,60)
+    icon.Position = UDim2.new(0.04,0,0.5,-30)
+    icon.Image = ICON_ID
+    icon.BackgroundTransparency = 1
+    icon.Draggable = true
+
+    return icon, sgui
+end
+
+-- Função para criar a Janela Principal
+function CreateMainWindow(parent)
+    local frame = Instance.new("Frame", parent)
+    frame.Name = "MainWindow"
+    frame.Size = UDim2.new(0, 350, 0, 430)
+    frame.Position = UDim2.new(0.12, 0, 0.3, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BackgroundTransparency = 0.2
+    frame.Visible = false
+    frame.Active = true
+    frame.Draggable = true
+
+    local uicorner = Instance.new("UICorner", frame)
+    uicorner.CornerRadius = UDim.new(0, 15)
+
+    local title = Instance.new("TextLabel", frame)
+    title.Text = "Blox Fruits Mobile Hub"
+    title.Size = UDim2.new(1, 0, 0, 36)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+
+    return frame
+end
+
+-- Função para mostrar notificação
+function Notify(msg)
+    pcall(function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Blox Fruits Mobile";
+            Text = msg;
+            Duration = 3;
+        })
+    end)
+end
+
+-- Funções auxiliares: Mar e Ilhas
+local Seas = {
+    [1] = {"Starter Island","Jungle","Pirate Village","Desert","Middle Town","Frozen Village","Marine Fortress","Skylands","Prison","Colosseum","Magma Village","Underwater City","Fountain City","Shank's Room"},
+    [2] = {"Cafe","Dark Arena","Usoap's Island","Kingdom of Rose","Green Zone","Graveyard","Dark Arena","Snow Mountain","Hot and Cold","Cursed Ship","Ice Castle","Forgotten Island"},
+    [3] = {"Port Town","Great Tree","Castle on the Sea","Hydra Island","Floating Turtle","Haunted Castle","Sea of Treats"}
+}
+function GetCurrentSea()
+    local placeId = game.PlaceId
+    if placeId == 2753915549 then return 1 end
+    if placeId == 4442272183 then return 2 end
+    if placeId == 7449423635 then return 3 end
+    return 1 -- fallback
+end
+
+function TeleportToIsland(islandName)
+    for _, v in pairs(Workspace:GetChildren()) do
+        if v:IsA("Part") and v.Name:lower():find(islandName:lower()) then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0,5,0)
+            return true
+        end
+    end
+    Notify("Ilha não encontrada!")
+    return false
+end
+
+function ChangeSea(sea)
+    local current = GetCurrentSea()
+    if sea == current then
+        Notify("Você já está neste mar!")
+        return
+    end
+    -- Checa se o usuário tem acesso ao mar
+    local level = LocalPlayer.Data.Level.Value
+    if sea == 2 and level < 700 then
+        Notify("Você não tem esse mar ainda!")
+        return
+    elseif sea == 3 and level < 1500 then
+        Notify("Você não tem esse mar ainda!")
+        return
+    end
+    -- Teleporta via comando do servidor (caso possível)
+    ReplicatedStorage.Remotes.CommF_:InvokeServer("TravelMain") -- Exemplo, pode variar
+    Notify("Mudando de mar... Se não funcionar, tente manualmente!")
+end
+
+-- Auto Farm
+local Autofarm = false
+function StartAutofarm()
+    Autofarm = true
+    spawn(function()
+        while Autofarm do
+            local level = LocalPlayer.Data.Level.Value
+            -- encontra quest e inimigos próximos ao seu level
+            -- (simplificado, customize conforme o jogo mudar)
+            local enemy = nil
+            for _,v in pairs(Workspace.Enemies:GetChildren()) do
+                if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                    enemy = v
+                    break
+                end
+            end
+            if enemy and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
+                -- Ataque
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack", enemy.Name)
+            end
+            wait(1)
+        end
+    end)
+end
+
+function StopAutofarm()
+    Autofarm = false
+end
+
+-- Auto coletar baús
+local AutoChest = false
+function StartAutoChest()
+    AutoChest = true
+    spawn(function()
+        while AutoChest do
+            for _, v in pairs(Workspace:GetChildren()) do
+                if v.Name:find("Chest") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0,3,0)
+                    wait(0.7)
+                end
+            end
+            wait(3)
+        end
+    end)
+end
+
+function StopAutoChest()
+    AutoChest = false
+end
+
+-- Função ESP
+function ToggleESP(type, state)
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if (type == "Player" and Players:FindFirstChild(obj.Name)) or (type == "Fruit" and obj.Name:find("Fruit")) then
+            if state then
+                if not obj:FindFirstChild("ESP") then
+                    local bill = Instance.new("BillboardGui", obj)
+                    bill.Name = "ESP"
+                    bill.Size = UDim2.new(0,100,0,40)
+                    bill.AlwaysOnTop = true
+                    local txt = Instance.new("TextLabel", bill)
+                    txt.Size = UDim2.new(1,0,1,0)
+                    txt.BackgroundTransparency = 1
+                    txt.Text = obj.Name
+                    txt.TextColor3 = type == "Player" and Color3.new(1,1,0) or Color3.new(1,0,0)
+                    txt.TextScaled = true
+                end
+            else
+                if obj:FindFirstChild("ESP") then
+                    obj.ESP:Destroy()
+                end
+            end
+        end
+    end
+end
+
+-- Aimbot para jogadores
+local AimbotActive = false
+function GetClosestPlayerToCursor()
+    local camera = Workspace.CurrentCamera
+    local closest, shortest = nil, math.huge
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character.Humanoid.Health > 0 then
+            local pos, onscreen = camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+            if onscreen then
+                local mouse = UserInputService:GetMouseLocation()
+                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                if dist < shortest then
+                    shortest = dist
+                    closest = plr
+                end
+            end
+        end
+    end
+    return closest
+end
+
+function StartAimbot()
+    AimbotActive = true
+    spawn(function()
+        while AimbotActive do
+            local target = GetClosestPlayerToCursor()
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                Workspace.CurrentCamera.CFrame = CFrame.new(
+                    Workspace.CurrentCamera.CFrame.Position,
+                    target.Character.HumanoidRootPart.Position
+                )
+            end
+            wait(0.02)
+        end
+    end)
+end
+
+function StopAimbot()
+    AimbotActive = false
+end
+
+-- Criação da GUI e Toggle
+local icon, gui = CreateFloatingIcon()
+local mainWin = CreateMainWindow(gui)
+
+icon.MouseButton1Click:Connect(function()
+    mainWin.Visible = not mainWin.Visible
+end)
+
+-- Adiciona botões e funções à GUI
+local function AddToggle(name, parent, yPos, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.9,0,0,36)
+    btn.Position = UDim2.new(0.05,0,0,yPos)
+    btn.Text = name
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 18
+    btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    btn.TextColor3 = Color3.new(1,1,1)
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.BackgroundColor3 = state and Color3.fromRGB(0,120,255) or Color3.fromRGB(30,30,30)
+        callback(state)
+    end)
+    return btn
+end
+
+AddToggle("Auto Farm", mainWin, 50, function(state)
+    if state then StartAutofarm() else StopAutofarm() end
+end)
+AddToggle("Auto Chest", mainWin, 100, function(state)
+    if state then StartAutoChest() else StopAutoChest() end
+end)
+AddToggle("ESP Players", mainWin, 150, function(state)
+    ToggleESP("Player", state)
+end)
+AddToggle("ESP Frutas", mainWin, 200, function(state)
+    ToggleESP("Fruit", state)
+end)
+AddToggle("Aimbot Players", mainWin, 250, function(state)
+    if state then StartAimbot() else StopAimbot() end
+end)
+
+-- Dropdown de ilhas para teleporte
+local drop = Instance.new("TextBox", mainWin)
+drop.Size = UDim2.new(0.9,0,0,32)
+drop.Position = UDim2.new(0.05,0,0,300)
+drop.PlaceholderText = "Digite o nome da ilha para teleportar"
+drop.Font = Enum.Font.Gotham
+drop.TextColor3 = Color3.new(1,1,1)
+drop.BackgroundColor3 = Color3.fromRGB(30,30,30)
+drop.FocusLost:Connect(function()
+    local sea = GetCurrentSea()
+    local found = false
+    for _, isl in ipairs(Seas[sea]) do
+        if isl:lower():find(drop.Text:lower()) then
+            TeleportToIsland(isl)
+            found = true
+            break
+        end
+    end
+    if not found then
+        Notify("Ilha não encontrada neste mar!")
+    end
+end)
+
+-- Dropdown para trocar de mar
+local changeSeaBox = Instance.new("TextBox", mainWin)
+changeSeaBox.Size = UDim2.new(0.9,0,0,32)
+changeSeaBox.Position = UDim2.new(0.05,0,0,340)
+changeSeaBox.PlaceholderText = "Digite 1, 2 ou 3 para trocar de mar"
+changeSeaBox.Font = Enum.Font.Gotham
+changeSeaBox.TextColor3 = Color3.new(1,1,1)
+changeSeaBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
+changeSeaBox.FocusLost:Connect(function()
+    local num = tonumber(changeSeaBox.Text)
+    if num and num >= 1 and num <= 3 then
+        ChangeSea(num)
+    else
+        Notify("Digite apenas 1, 2 ou 3!")
+    end
+end)
+
+-- Funções extras
+-- Exemplo: Teleport para jogador
+local tpPlayerBox = Instance.new("TextBox", mainWin)
+tpPlayerBox.Size = UDim2.new(0.9,0,0,32)
+tpPlayerBox.Position = UDim2.new(0.05,0,0,380)
+tpPlayerBox.PlaceholderText = "Digite nick para teleportar até player"
+tpPlayerBox.Font = Enum.Font.Gotham
+tpPlayerBox.TextColor3 = Color3.new(1,1,1)
+tpPlayerBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
+tpPlayerBox.FocusLost:Connect(function()
+    local target = Players:FindFirstChild(tpPlayerBox.Text)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+        Notify("Teleportado até "..tpPlayerBox.Text)
+    else
+        Notify("Player não encontrado!")
+    end
+end)
+
+-- Créditos
+local credit = Instance.new("TextLabel", mainWin)
+credit.Size = UDim2.new(1,0,0,30)
+credit.Position = UDim2.new(0,0,1,-30)
+credit.Text = "Feito por @Leozin Scripts"
+credit.Font = Enum.Font.Gotham
+credit.TextColor3 = Color3.fromRGB(180,180,180)
+credit.BackgroundTransparency = 1
+credit.TextScaled = true
+
+Notify("Script Blox Fruits Mobile carregado!")
