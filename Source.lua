@@ -1,6 +1,7 @@
 --[[ 
-Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot/WeaponSelect/Extras
-Agora com Auto Gira Fruta, Auto Haki, Auto Attack.
+Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot/WeaponSelect/Extras (Atualizado)
+Agora com Auto Chest aprimorado: coleta todos os baús do mapa voando.
+Inclui: auto farm, auto chest, esp, tp, troca de mar, aimbot, auto haki, auto gira fruta, auto attack aprimorado, select weapon spinner, teleport player.
 ]]
 
 local Players = game:GetService("Players")
@@ -9,15 +10,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 
--- Configs
 local ICON_ID = "rbxassetid://13433967006"
 local GUI_NAME = "BloxFruitsMobileGui"
 
--- Weapon select config
 local WeaponTypes = {"Melee", "Sword", "Gun", "Blox Fruit"}
 local SelectedWeaponType = "Melee"
+local weaponIndex = 1
 
--- Auto funções extras
 local AutoAttack = false
 local AutoHaki = false
 local AutoSpin = false
@@ -65,7 +64,6 @@ function CreateMainWindow(parent)
     return frame
 end
 
--- Notificação
 function Notify(msg)
     pcall(function()
         game.StarterGui:SetCore("SendNotification", {
@@ -178,29 +176,42 @@ function StartAutofarm()
             if enemy and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 SelectWeapon()
                 LocalPlayer.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
-                if AutoAttack then
-                    ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack", enemy.Name)
-                end
             end
             wait(1)
         end
     end)
 end
+function StopAutofarm() Autofarm = false end
 
-function StopAutofarm()
-    Autofarm = false
-end
-
--- Auto coletar baús
+-- Auto Chest aprimorado: coleta todos os baús do mapa voando
 local AutoChest = false
 function StartAutoChest()
     AutoChest = true
     spawn(function()
         while AutoChest do
-            for _, v in pairs(Workspace:GetChildren()) do
-                if v.Name:find("Chest") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0,3,0)
-                    wait(0.7)
+            local allChests = {}
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("Part") and v.Name:lower():find("chest") and v.Transparency < 1 then
+                    table.insert(allChests, v)
+                end
+            end
+            for _, chest in ipairs(allChests) do
+                if not AutoChest then break end
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and chest and chest.Parent then
+                    -- Voa até o baú gradualmente (simula voo suave)
+                    local startPos = hrp.Position
+                    local finishPos = chest.Position + Vector3.new(0, 4, 0)
+                    local steps = math.max(5, math.floor((startPos - finishPos).Magnitude / 20))
+                    for i = 1, steps do
+                        if not AutoChest or not hrp or not chest.Parent then break end
+                        local pos = startPos:Lerp(finishPos, i / steps)
+                        hrp.CFrame = CFrame.new(pos)
+                        wait(0.04)
+                    end
+                    -- Fica um pouco em cima do baú para garantir coleta
+                    hrp.CFrame = CFrame.new(finishPos)
+                    wait(0.4)
                 end
             end
             wait(3)
@@ -291,34 +302,56 @@ function StartAutoHaki()
 end
 function StopAutoHaki() AutoHaki = false end
 
--- AUTO ATTACK
-function StartAutoAttack()
-    AutoAttack = true
-    spawn(function()
-        while AutoAttack do
-            local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
-            if tool then
-                for _,v in pairs(getconnections(LocalPlayer.PlayerGui.Main.SwordButton.MouseButton1Click)) do
-                    v:Fire()
-                end
-            end
-            wait(0.2)
-        end
-    end)
-end
-function StopAutoAttack() AutoAttack = false end
-
 -- AUTO GIRAR FRUTA
 function StartAutoSpin()
     AutoSpin = true
     spawn(function()
         while AutoSpin do
             ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin","Buy")
-            wait(3600) -- Girar a cada hora (ajuste se quiser girar mais rápido)
+            wait(3600)
         end
     end)
 end
 function StopAutoSpin() AutoSpin = false end
+
+-- AUTO ATTACK APRIMORADO (NPCs e Players, conforme arma)
+function AttackTarget(target)
+    local tool = SelectWeapon()
+    if tool and tool.ToolTip:find("Blox Fruit") then
+        if ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommE") then
+            ReplicatedStorage.Remotes.CommE:FireServer("Skill1", target.HumanoidRootPart.Position)
+        end
+    else
+        if ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_") then
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack", target.Name)
+        end
+    end
+end
+
+function StartAutoAttack()
+    AutoAttack = true
+    spawn(function()
+        while AutoAttack do
+            -- NPCs
+            for _,v in pairs(Workspace.Enemies:GetChildren()) do
+                if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                    AttackTarget(v)
+                end
+            end
+            -- Players próximos (exceto você)
+            for _,plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                    local dist = (LocalPlayer.Character.HumanoidRootPart.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+                    if dist < 50 then
+                        AttackTarget(plr.Character)
+                    end
+                end
+            end
+            wait(0.25)
+        end
+    end)
+end
+function StopAutoAttack() AutoAttack = false end
 
 -- GUI e toggles
 local icon, gui = CreateFloatingIcon()
@@ -358,7 +391,6 @@ spinnerLabel.TextColor3 = Color3.new(1,1,1)
 spinnerLabel.BackgroundTransparency = 1
 spinnerLabel.TextScaled = true
 
-local weaponIndex = 1
 local function UpdateSpinner()
     SelectedWeaponType = WeaponTypes[weaponIndex]
     spinnerLabel.Text = "Select Weapon: "..SelectedWeaponType
@@ -375,7 +407,6 @@ spinnerRight.MouseButton1Click:Connect(function()
 end)
 UpdateSpinner()
 
--- Adiciona botões e funções à GUI
 local function AddToggle(name, parent, yPos, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = UDim2.new(0.9,0,0,36)
@@ -477,7 +508,6 @@ tpPlayerBox.FocusLost:Connect(function()
     end
 end)
 
--- Créditos
 local credit = Instance.new("TextLabel", mainWin)
 credit.Size = UDim2.new(1,0,0,30)
 credit.Position = UDim2.new(0,0,1,-30)
