@@ -1,25 +1,26 @@
 --[[ 
-Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot/WeaponSelect
-Agora com spinner para "Select Weapon to Farm" (melee, sword, gun, blox fruit)
-Feito para fins educacionais. 
-Inclui: GUI com ícone ninja, autofarm, auto chest, ESP, TP, troca de mar, aimbot em jogadores, escolha de arma, etc.
+Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot/WeaponSelect/Extras
+Agora com Auto Gira Fruta, Auto Haki, Auto Attack.
 ]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Configs
-local ICON_ID = "rbxassetid://13433967006" -- Ícone ninja
-local GUI_NAME = "LeozinScripts"
+local ICON_ID = "rbxassetid://13433967006"
+local GUI_NAME = "BloxFruitsMobileGui"
 
 -- Weapon select config
 local WeaponTypes = {"Melee", "Sword", "Gun", "Blox Fruit"}
 local SelectedWeaponType = "Melee"
+
+-- Auto funções extras
+local AutoAttack = false
+local AutoHaki = false
+local AutoSpin = false
 
 -- Função para criar um botão flutuante (ícone ninja)
 function CreateFloatingIcon()
@@ -42,7 +43,7 @@ end
 function CreateMainWindow(parent)
     local frame = Instance.new("Frame", parent)
     frame.Name = "MainWindow"
-    frame.Size = UDim2.new(0, 350, 0, 480)
+    frame.Size = UDim2.new(0, 350, 0, 600)
     frame.Position = UDim2.new(0.12, 0, 0.3, 0)
     frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     frame.BackgroundTransparency = 0.2
@@ -54,7 +55,7 @@ function CreateMainWindow(parent)
     uicorner.CornerRadius = UDim.new(0, 15)
 
     local title = Instance.new("TextLabel", frame)
-    title.Text = "Leozim Scripts Blox Fruit V4"
+    title.Text = "Blox Fruits Mobile Hub"
     title.Size = UDim2.new(1, 0, 0, 36)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
@@ -64,7 +65,7 @@ function CreateMainWindow(parent)
     return frame
 end
 
--- Função para mostrar notificação
+-- Notificação
 function Notify(msg)
     pcall(function()
         game.StarterGui:SetCore("SendNotification", {
@@ -75,7 +76,7 @@ function Notify(msg)
     end)
 end
 
--- Funções auxiliares: Mar e Ilhas
+-- Mar e Ilhas
 local Seas = {
     [1] = {"Starter Island","Jungle","Pirate Village","Desert","Middle Town","Frozen Village","Marine Fortress","Skylands","Prison","Colosseum","Magma Village","Underwater City","Fountain City","Shank's Room"},
     [2] = {"Cafe","Dark Arena","Usoap's Island","Kingdom of Rose","Green Zone","Graveyard","Dark Arena","Snow Mountain","Hot and Cold","Cursed Ship","Ice Castle","Forgotten Island"},
@@ -86,7 +87,7 @@ function GetCurrentSea()
     if placeId == 2753915549 then return 1 end
     if placeId == 4442272183 then return 2 end
     if placeId == 7449423635 then return 3 end
-    return 1 -- fallback
+    return 1
 end
 
 function TeleportToIsland(islandName)
@@ -106,7 +107,6 @@ function ChangeSea(sea)
         Notify("Você já está neste mar!")
         return
     end
-    -- Checa se o usuário tem acesso ao mar
     local level = LocalPlayer.Data.Level.Value
     if sea == 2 and level < 700 then
         Notify("Você não tem esse mar ainda!")
@@ -115,12 +115,11 @@ function ChangeSea(sea)
         Notify("Você não tem esse mar ainda!")
         return
     end
-    -- Teleporta via comando do servidor (caso possível)
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("TravelMain") -- Exemplo, pode variar
+    ReplicatedStorage.Remotes.CommF_:InvokeServer("TravelMain")
     Notify("Mudando de mar... Se não funcionar, tente manualmente!")
 end
 
--- Função para selecionar a arma correta
+-- Selecionar arma correta
 function SelectWeapon()
     local backpack = LocalPlayer.Backpack
     local char = LocalPlayer.Character
@@ -143,7 +142,6 @@ function SelectWeapon()
     if weaponToEquip then
         LocalPlayer.Character.Humanoid:EquipTool(weaponToEquip)
     else
-        -- Tenta equipar se já estiver na mão
         for _,item in pairs(char:GetChildren()) do
             if SelectedWeaponType == "Melee" and item:IsA("Tool") and item.ToolTip:find("Melee") then
                 weaponToEquip = item
@@ -170,8 +168,6 @@ function StartAutofarm()
     spawn(function()
         while Autofarm do
             local level = LocalPlayer.Data.Level.Value
-            -- encontra quest e inimigos próximos ao seu level
-            -- (simplificado, customize conforme o jogo mudar)
             local enemy = nil
             for _,v in pairs(Workspace.Enemies:GetChildren()) do
                 if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
@@ -180,11 +176,11 @@ function StartAutofarm()
                 end
             end
             if enemy and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                -- Equipa a arma escolhida
                 SelectWeapon()
                 LocalPlayer.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
-                -- Ataque
-                ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack", enemy.Name)
+                if AutoAttack then
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack", enemy.Name)
+                end
             end
             wait(1)
         end
@@ -211,12 +207,9 @@ function StartAutoChest()
         end
     end)
 end
+function StopAutoChest() AutoChest = false end
 
-function StopAutoChest()
-    AutoChest = false
-end
-
--- Função ESP
+-- ESP
 function ToggleESP(type, state)
     for _, obj in pairs(Workspace:GetChildren()) do
         if (type == "Player" and Players:FindFirstChild(obj.Name)) or (type == "Fruit" and obj.Name:find("Fruit")) then
@@ -278,18 +271,59 @@ function StartAimbot()
         end
     end)
 end
+function StopAimbot() AimbotActive = false end
 
-function StopAimbot()
-    AimbotActive = false
+-- AUTO HAKI
+function StartAutoHaki()
+    AutoHaki = true
+    spawn(function()
+        while AutoHaki do
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local haki = char:FindFirstChild("HasBuso")
+                if not haki or haki.Value == false then
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("Buso")
+                end
+            end
+            wait(2)
+        end
+    end)
 end
+function StopAutoHaki() AutoHaki = false end
 
--- Criação da GUI e Toggle
+-- AUTO ATTACK
+function StartAutoAttack()
+    AutoAttack = true
+    spawn(function()
+        while AutoAttack do
+            local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            if tool then
+                for _,v in pairs(getconnections(LocalPlayer.PlayerGui.Main.SwordButton.MouseButton1Click)) do
+                    v:Fire()
+                end
+            end
+            wait(0.2)
+        end
+    end)
+end
+function StopAutoAttack() AutoAttack = false end
+
+-- AUTO GIRAR FRUTA
+function StartAutoSpin()
+    AutoSpin = true
+    spawn(function()
+        while AutoSpin do
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin","Buy")
+            wait(3600) -- Girar a cada hora (ajuste se quiser girar mais rápido)
+        end
+    end)
+end
+function StopAutoSpin() AutoSpin = false end
+
+-- GUI e toggles
 local icon, gui = CreateFloatingIcon()
 local mainWin = CreateMainWindow(gui)
-
-icon.MouseButton1Click:Connect(function()
-    mainWin.Visible = not mainWin.Visible
-end)
+icon.MouseButton1Click:Connect(function() mainWin.Visible = not mainWin.Visible end)
 
 -- Spinner "Select Weapon to Farm"
 local spinnerFrame = Instance.new("Frame", mainWin)
@@ -375,11 +409,20 @@ end)
 AddToggle("Aimbot Players", mainWin, 290, function(state)
     if state then StartAimbot() else StopAimbot() end
 end)
+AddToggle("Auto Haki", mainWin, 340, function(state)
+    if state then StartAutoHaki() else StopAutoHaki() end
+end)
+AddToggle("Auto Attack", mainWin, 390, function(state)
+    if state then StartAutoAttack() else StopAutoAttack() end
+end)
+AddToggle("Auto Gira Fruta", mainWin, 440, function(state)
+    if state then StartAutoSpin() else StopAutoSpin() end
+end)
 
 -- Dropdown de ilhas para teleporte
 local drop = Instance.new("TextBox", mainWin)
 drop.Size = UDim2.new(0.9,0,0,32)
-drop.Position = UDim2.new(0.05,0,0,340)
+drop.Position = UDim2.new(0.05,0,0,490)
 drop.PlaceholderText = "Digite o nome da ilha para teleportar"
 drop.Font = Enum.Font.Gotham
 drop.TextColor3 = Color3.new(1,1,1)
@@ -402,7 +445,7 @@ end)
 -- Dropdown para trocar de mar
 local changeSeaBox = Instance.new("TextBox", mainWin)
 changeSeaBox.Size = UDim2.new(0.9,0,0,32)
-changeSeaBox.Position = UDim2.new(0.05,0,0,380)
+changeSeaBox.Position = UDim2.new(0.05,0,0,530)
 changeSeaBox.PlaceholderText = "Digite 1, 2 ou 3 para trocar de mar"
 changeSeaBox.Font = Enum.Font.Gotham
 changeSeaBox.TextColor3 = Color3.new(1,1,1)
@@ -416,11 +459,10 @@ changeSeaBox.FocusLost:Connect(function()
     end
 end)
 
--- Funções extras
--- Exemplo: Teleport para jogador
+-- Funções extras: teleport para player
 local tpPlayerBox = Instance.new("TextBox", mainWin)
 tpPlayerBox.Size = UDim2.new(0.9,0,0,32)
-tpPlayerBox.Position = UDim2.new(0.05,0,0,420)
+tpPlayerBox.Position = UDim2.new(0.05,0,0,570)
 tpPlayerBox.PlaceholderText = "Digite nick para teleportar até player"
 tpPlayerBox.Font = Enum.Font.Gotham
 tpPlayerBox.TextColor3 = Color3.new(1,1,1)
