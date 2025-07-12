@@ -1,7 +1,8 @@
 --[[ 
-Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot
+Blox Fruits Mobile Script - GUI/AutoFarm/ESP/Teleport/Aimbot/WeaponSelect
+Agora com spinner para "Select Weapon to Farm" (melee, sword, gun, blox fruit)
 Feito para fins educacionais. 
-Inclui: GUI com ícone ninja, autofarm, auto chest, ESP, TP, troca de mar, aimbot em jogadores, etc.
+Inclui: GUI com ícone ninja, autofarm, auto chest, ESP, TP, troca de mar, aimbot em jogadores, escolha de arma, etc.
 ]]
 
 local Players = game:GetService("Players")
@@ -13,8 +14,12 @@ local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Configs
-local ICON_ID = "rbxassetid://13433967006" -- Ícone ninja (use o ID de sua preferência)
-local GUI_NAME = "BloxFruitsMobileGui"
+local ICON_ID = "rbxassetid://13433967006" -- Ícone ninja
+local GUI_NAME = "LeozinScripts"
+
+-- Weapon select config
+local WeaponTypes = {"Melee", "Sword", "Gun", "Blox Fruit"}
+local SelectedWeaponType = "Melee"
 
 -- Função para criar um botão flutuante (ícone ninja)
 function CreateFloatingIcon()
@@ -37,7 +42,7 @@ end
 function CreateMainWindow(parent)
     local frame = Instance.new("Frame", parent)
     frame.Name = "MainWindow"
-    frame.Size = UDim2.new(0, 350, 0, 430)
+    frame.Size = UDim2.new(0, 350, 0, 480)
     frame.Position = UDim2.new(0.12, 0, 0.3, 0)
     frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     frame.BackgroundTransparency = 0.2
@@ -49,7 +54,7 @@ function CreateMainWindow(parent)
     uicorner.CornerRadius = UDim.new(0, 15)
 
     local title = Instance.new("TextLabel", frame)
-    title.Text = "Blox Fruits Mobile Hub"
+    title.Text = "Leozim Scripts Blox Fruit V4"
     title.Size = UDim2.new(1, 0, 0, 36)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
@@ -115,6 +120,49 @@ function ChangeSea(sea)
     Notify("Mudando de mar... Se não funcionar, tente manualmente!")
 end
 
+-- Função para selecionar a arma correta
+function SelectWeapon()
+    local backpack = LocalPlayer.Backpack
+    local char = LocalPlayer.Character
+    local weaponToEquip = nil
+    for _,item in pairs(backpack:GetChildren()) do
+        if SelectedWeaponType == "Melee" and item:IsA("Tool") and item.ToolTip:find("Melee") then
+            weaponToEquip = item
+            break
+        elseif SelectedWeaponType == "Sword" and item:IsA("Tool") and item.ToolTip:find("Sword") then
+            weaponToEquip = item
+            break
+        elseif SelectedWeaponType == "Gun" and item:IsA("Tool") and item.ToolTip:find("Gun") then
+            weaponToEquip = item
+            break
+        elseif SelectedWeaponType == "Blox Fruit" and item:IsA("Tool") and item.ToolTip:find("Blox Fruit") then
+            weaponToEquip = item
+            break
+        end
+    end
+    if weaponToEquip then
+        LocalPlayer.Character.Humanoid:EquipTool(weaponToEquip)
+    else
+        -- Tenta equipar se já estiver na mão
+        for _,item in pairs(char:GetChildren()) do
+            if SelectedWeaponType == "Melee" and item:IsA("Tool") and item.ToolTip:find("Melee") then
+                weaponToEquip = item
+                break
+            elseif SelectedWeaponType == "Sword" and item:IsA("Tool") and item.ToolTip:find("Sword") then
+                weaponToEquip = item
+                break
+            elseif SelectedWeaponType == "Gun" and item:IsA("Tool") and item.ToolTip:find("Gun") then
+                weaponToEquip = item
+                break
+            elseif SelectedWeaponType == "Blox Fruit" and item:IsA("Tool") and item.ToolTip:find("Blox Fruit") then
+                weaponToEquip = item
+                break
+            end
+        end
+    end
+    return weaponToEquip
+end
+
 -- Auto Farm
 local Autofarm = false
 function StartAutofarm()
@@ -132,6 +180,8 @@ function StartAutofarm()
                 end
             end
             if enemy and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                -- Equipa a arma escolhida
+                SelectWeapon()
                 LocalPlayer.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
                 -- Ataque
                 ReplicatedStorage.Remotes.CommF_:InvokeServer("Attack", enemy.Name)
@@ -241,6 +291,56 @@ icon.MouseButton1Click:Connect(function()
     mainWin.Visible = not mainWin.Visible
 end)
 
+-- Spinner "Select Weapon to Farm"
+local spinnerFrame = Instance.new("Frame", mainWin)
+spinnerFrame.Size = UDim2.new(0.9, 0, 0, 36)
+spinnerFrame.Position = UDim2.new(0.05,0,0,45)
+spinnerFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+spinnerFrame.BackgroundTransparency = 0.2
+local spinnerCorner = Instance.new("UICorner", spinnerFrame)
+spinnerCorner.CornerRadius = UDim.new(0, 6)
+
+local spinnerLeft = Instance.new("TextButton", spinnerFrame)
+spinnerLeft.Text = "<"
+spinnerLeft.Size = UDim2.new(0,36,1,0)
+spinnerLeft.Font = Enum.Font.GothamBold
+spinnerLeft.TextColor3 = Color3.new(1,1,1)
+spinnerLeft.BackgroundTransparency = 1
+
+local spinnerRight = Instance.new("TextButton", spinnerFrame)
+spinnerRight.Text = ">"
+spinnerRight.Size = UDim2.new(0,36,1,0)
+spinnerRight.Position = UDim2.new(1,-36,0,0)
+spinnerRight.Font = Enum.Font.GothamBold
+spinnerRight.TextColor3 = Color3.new(1,1,1)
+spinnerRight.BackgroundTransparency = 1
+
+local spinnerLabel = Instance.new("TextLabel", spinnerFrame)
+spinnerLabel.Text = "Select Weapon: "..SelectedWeaponType
+spinnerLabel.Size = UDim2.new(1,-72,1,0)
+spinnerLabel.Position = UDim2.new(0,36,0,0)
+spinnerLabel.Font = Enum.Font.Gotham
+spinnerLabel.TextColor3 = Color3.new(1,1,1)
+spinnerLabel.BackgroundTransparency = 1
+spinnerLabel.TextScaled = true
+
+local weaponIndex = 1
+local function UpdateSpinner()
+    SelectedWeaponType = WeaponTypes[weaponIndex]
+    spinnerLabel.Text = "Select Weapon: "..SelectedWeaponType
+end
+spinnerLeft.MouseButton1Click:Connect(function()
+    weaponIndex = weaponIndex - 1
+    if weaponIndex < 1 then weaponIndex = #WeaponTypes end
+    UpdateSpinner()
+end)
+spinnerRight.MouseButton1Click:Connect(function()
+    weaponIndex = weaponIndex + 1
+    if weaponIndex > #WeaponTypes then weaponIndex = 1 end
+    UpdateSpinner()
+end)
+UpdateSpinner()
+
 -- Adiciona botões e funções à GUI
 local function AddToggle(name, parent, yPos, callback)
     local btn = Instance.new("TextButton", parent)
@@ -260,26 +360,26 @@ local function AddToggle(name, parent, yPos, callback)
     return btn
 end
 
-AddToggle("Auto Farm", mainWin, 50, function(state)
+AddToggle("Auto Farm", mainWin, 90, function(state)
     if state then StartAutofarm() else StopAutofarm() end
 end)
-AddToggle("Auto Chest", mainWin, 100, function(state)
+AddToggle("Auto Chest", mainWin, 140, function(state)
     if state then StartAutoChest() else StopAutoChest() end
 end)
-AddToggle("ESP Players", mainWin, 150, function(state)
+AddToggle("ESP Players", mainWin, 190, function(state)
     ToggleESP("Player", state)
 end)
-AddToggle("ESP Frutas", mainWin, 200, function(state)
+AddToggle("ESP Frutas", mainWin, 240, function(state)
     ToggleESP("Fruit", state)
 end)
-AddToggle("Aimbot Players", mainWin, 250, function(state)
+AddToggle("Aimbot Players", mainWin, 290, function(state)
     if state then StartAimbot() else StopAimbot() end
 end)
 
 -- Dropdown de ilhas para teleporte
 local drop = Instance.new("TextBox", mainWin)
 drop.Size = UDim2.new(0.9,0,0,32)
-drop.Position = UDim2.new(0.05,0,0,300)
+drop.Position = UDim2.new(0.05,0,0,340)
 drop.PlaceholderText = "Digite o nome da ilha para teleportar"
 drop.Font = Enum.Font.Gotham
 drop.TextColor3 = Color3.new(1,1,1)
@@ -302,7 +402,7 @@ end)
 -- Dropdown para trocar de mar
 local changeSeaBox = Instance.new("TextBox", mainWin)
 changeSeaBox.Size = UDim2.new(0.9,0,0,32)
-changeSeaBox.Position = UDim2.new(0.05,0,0,340)
+changeSeaBox.Position = UDim2.new(0.05,0,0,380)
 changeSeaBox.PlaceholderText = "Digite 1, 2 ou 3 para trocar de mar"
 changeSeaBox.Font = Enum.Font.Gotham
 changeSeaBox.TextColor3 = Color3.new(1,1,1)
@@ -320,7 +420,7 @@ end)
 -- Exemplo: Teleport para jogador
 local tpPlayerBox = Instance.new("TextBox", mainWin)
 tpPlayerBox.Size = UDim2.new(0.9,0,0,32)
-tpPlayerBox.Position = UDim2.new(0.05,0,0,380)
+tpPlayerBox.Position = UDim2.new(0.05,0,0,420)
 tpPlayerBox.PlaceholderText = "Digite nick para teleportar até player"
 tpPlayerBox.Font = Enum.Font.Gotham
 tpPlayerBox.TextColor3 = Color3.new(1,1,1)
@@ -339,7 +439,7 @@ end)
 local credit = Instance.new("TextLabel", mainWin)
 credit.Size = UDim2.new(1,0,0,30)
 credit.Position = UDim2.new(0,0,1,-30)
-credit.Text = "Feito por @Leozin Scripts"
+credit.Text = "Feito por Copilot/FakeTsyo - github.com"
 credit.Font = Enum.Font.Gotham
 credit.TextColor3 = Color3.fromRGB(180,180,180)
 credit.BackgroundTransparency = 1
